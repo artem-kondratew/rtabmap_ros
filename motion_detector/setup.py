@@ -21,7 +21,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'motion_detector = motion_detector.motion_detector:main'
+            'motion_detector = motion_detector.motion_detector:main',
+            'fake_detector = motion_detector.fake_detector:main',
+            'decoder = motion_detector.decoder:main',
         ],
     },
 )
