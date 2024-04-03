@@ -1053,8 +1053,10 @@ void CommonDataSubscriber::commonSingleCameraCallback(
 		const std::vector<rtabmap_msgs::msg::GlobalDescriptor> & globalDescriptorMsgs,
 		const std::vector<rtabmap_msgs::msg::KeyPoint> & localKeyPoints,
 		const std::vector<rtabmap_msgs::msg::Point3f> & localPoints3d,
-		const cv::Mat & localDescriptors)
+		const cv::Mat & localDescriptors,
+		const cv_bridge::CvImageConstPtr & maskMsg)
 {
+	RCLCPP_INFO(rclcpp::get_logger("rtabmap_sync"), "RGBDM sync: success");
 	std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> > localKeyPointsMsgs;
 	localKeyPointsMsgs.push_back(localKeyPoints);
 	std::vector<std::vector<rtabmap_msgs::msg::Point3f> > localPoints3dMsgs;
@@ -1064,6 +1066,7 @@ void CommonDataSubscriber::commonSingleCameraCallback(
 
 	std::vector<cv_bridge::CvImageConstPtr> imageMsgs;
 	std::vector<cv_bridge::CvImageConstPtr> depthMsgs;
+	std::vector<cv_bridge::CvImageConstPtr> maskMsgs;
 	std::vector<sensor_msgs::msg::CameraInfo> cameraInfoMsgs;
 	std::vector<sensor_msgs::msg::CameraInfo> depthCameraInfoMsgs;
 	if(imageMsg.get())
@@ -1073,6 +1076,10 @@ void CommonDataSubscriber::commonSingleCameraCallback(
 	if(depthMsg.get())
 	{
 		depthMsgs.push_back(depthMsg);
+	}
+	if(maskMsg.get())
+	{
+		maskMsgs.push_back(maskMsg);
 	}
 	cameraInfoMsgs.push_back(rgbCameraInfoMsg);
 	depthCameraInfoMsgs.push_back(depthCameraInfoMsg);
@@ -1089,7 +1096,8 @@ void CommonDataSubscriber::commonSingleCameraCallback(
 			globalDescriptorMsgs,
 			localKeyPointsMsgs,
 			localPoints3dMsgs,
-			localDescriptorsMsgs);
+			localDescriptorsMsgs,
+			maskMsgs);
 }
 
 void CommonDataSubscriber::tick(const rclcpp::Time & stamp, double targetFrequency)

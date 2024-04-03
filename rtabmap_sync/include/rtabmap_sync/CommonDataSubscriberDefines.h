@@ -94,6 +94,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 		DATA_SYNC8(PREFIX, Exact, MSG0, MSG1, MSG2, MSG3, MSG4, MSG5, MSG6, MSG7) \
 		void PREFIX##Callback(const MSG0 ::ConstSharedPtr, const MSG1 ::ConstSharedPtr, const MSG2 ::ConstSharedPtr, const MSG3 ::ConstSharedPtr, const MSG4 ::ConstSharedPtr, const MSG5 ::ConstSharedPtr, const MSG6 ::ConstSharedPtr, const MSG7 ::ConstSharedPtr);
 
+// SYNC0 is SYNC4 with mask msg from motion_detector
+#define DATA_SYNC0(PREFIX, SYNC_NAME, MSG0, MSG1, MSG2, MSG3, MSG4) \
+		typedef message_filters::sync_policies::SYNC_NAME##Time<MSG0, MSG1, MSG2, MSG3, MSG4> PREFIX##SYNC_NAME##SyncPolicy; \
+		message_filters::Synchronizer<PREFIX##SYNC_NAME##SyncPolicy> * PREFIX##SYNC_NAME##Sync_;
+
+#define DATA_SYNCS0(PREFIX, MSG0, MSG1, MSG2, MSG3, MSG4) \
+		DATA_SYNC0(PREFIX, Approximate, MSG0, MSG1, MSG2, MSG3, MSG4) \
+		DATA_SYNC0(PREFIX, Exact, MSG0, MSG1, MSG2, MSG3, MSG4) \
+		void PREFIX##Callback(const MSG0 ::ConstSharedPtr, const MSG1 ::ConstSharedPtr, const MSG2 ::ConstSharedPtr, const MSG3 ::ConstSharedPtr, const MSG4 ::ConstSharedPtr);
+
+// SYNC1 is SYNC5 with mask msg from motion_detector
+#define DATA_SYNC1(PREFIX, SYNC_NAME, MSG0, MSG1, MSG2, MSG3, MSG4, MSG5) \
+		typedef message_filters::sync_policies::SYNC_NAME##Time<MSG0, MSG1, MSG2, MSG3, MSG4, MSG5> PREFIX##SYNC_NAME##SyncPolicy; \
+		message_filters::Synchronizer<PREFIX##SYNC_NAME##SyncPolicy> * PREFIX##SYNC_NAME##Sync_;
+
+#define DATA_SYNCS1(PREFIX, MSG0, MSG1, MSG2, MSG3, MSG4, MSG5) \
+		DATA_SYNC1(PREFIX, Approximate, MSG0, MSG1, MSG2, MSG3, MSG4, MSG5) \
+		DATA_SYNC1(PREFIX, Exact, MSG0, MSG1, MSG2, MSG3, MSG4, MSG5) \
+		void PREFIX##Callback(const MSG0 ::ConstSharedPtr, const MSG1 ::ConstSharedPtr, const MSG2 ::ConstSharedPtr, const MSG3 ::ConstSharedPtr, const MSG4 ::ConstSharedPtr, const MSG5 ::ConstSharedPtr);
+
 
 // Constructor
 #define SYNC_INIT(PREFIX) \
@@ -259,6 +279,53 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 				getTopicName(SUB5.getSubscriber()).c_str(), \
 				getTopicName(SUB6.getSubscriber()).c_str(), \
 				getTopicName(SUB7.getSubscriber()).c_str());
+
+// SYNC_DECL0 is SYNC_DECL4 with mask msg from motion_detector				
+#define SYNC_DECL0(CLASS, PREFIX, APPROX, QUEUE_SIZE, SUB0, SUB1, SUB2, SUB3, SUB4) \
+		if(APPROX) \
+		{ \
+			PREFIX##ApproximateSync_ = new message_filters::Synchronizer<PREFIX##ApproximateSyncPolicy>( \
+					PREFIX##ApproximateSyncPolicy(QUEUE_SIZE), SUB0, SUB1, SUB2, SUB3, SUB4); \
+			PREFIX##ApproximateSync_->registerCallback(std::bind(&CLASS::PREFIX##Callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)); \
+		} \
+		else \
+		{ \
+			PREFIX##ExactSync_ = new message_filters::Synchronizer<PREFIX##ExactSyncPolicy>( \
+					PREFIX##ExactSyncPolicy(QUEUE_SIZE), SUB0, SUB1, SUB2, SUB3, SUB4); \
+			PREFIX##ExactSync_->registerCallback(std::bind(&CLASS::PREFIX##Callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)); \
+		} \
+		subscribedTopicsMsg_ = uFormat("\n%s subscribed to (%s sync):\n   %s \\\n   %s \\\n   %s \\\n   %s \\\n   %s", \
+				name_.c_str(), \
+				APPROX?"approx":"exact", \
+				getTopicName(SUB0.getSubscriber()).c_str(), \
+				getTopicName(SUB1.getSubscriber()).c_str(), \
+				getTopicName(SUB2.getSubscriber()).c_str(), \
+				getTopicName(SUB3.getSubscriber()).c_str(), \
+				getTopicName(SUB4.getSubscriber()).c_str());
+
+// SYNC_DECL1 is SYNC_DECL5 with mask msg from motion_detector
+#define SYNC_DECL1(CLASS, PREFIX, APPROX, QUEUE_SIZE, SUB0, SUB1, SUB2, SUB3, SUB4, SUB5) \
+		if(APPROX) \
+		{ \
+			PREFIX##ApproximateSync_ = new message_filters::Synchronizer<PREFIX##ApproximateSyncPolicy>( \
+					PREFIX##ApproximateSyncPolicy(QUEUE_SIZE), SUB0, SUB1, SUB2, SUB3, SUB4, SUB5); \
+			PREFIX##ApproximateSync_->registerCallback(std::bind(&CLASS::PREFIX##Callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)); \
+		} \
+		else \
+		{ \
+			PREFIX##ExactSync_ = new message_filters::Synchronizer<PREFIX##ExactSyncPolicy>( \
+					PREFIX##ExactSyncPolicy(QUEUE_SIZE), SUB0, SUB1, SUB2, SUB3, SUB4, SUB5); \
+			PREFIX##ExactSync_->registerCallback(std::bind(&CLASS::PREFIX##Callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)); \
+		} \
+		subscribedTopicsMsg_ = uFormat("\n%s subscribed to (%s sync):\n   %s \\\n   %s \\\n   %s \\\n   %s \\\n   %s \\\n   %s", \
+				name_.c_str(), \
+				approxSync?"approx":"exact", \
+				getTopicName(SUB0.getSubscriber()).c_str(), \
+				getTopicName(SUB1.getSubscriber()).c_str(), \
+				getTopicName(SUB2.getSubscriber()).c_str(), \
+				getTopicName(SUB3.getSubscriber()).c_str(), \
+				getTopicName(SUB4.getSubscriber()).c_str(), \
+				getTopicName(SUB5.getSubscriber()).c_str());
 
 
 #endif /* INCLUDE_RTABMAP_ROS_COMMONDATASUBSCRIBERIMPL_H_ */
