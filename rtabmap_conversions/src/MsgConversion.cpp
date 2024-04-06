@@ -2031,6 +2031,7 @@ rtabmap::Transform getTransform(
 bool convertRGBDMsgs(
 		const std::vector<cv_bridge::CvImageConstPtr> & imageMsgs,
 		const std::vector<cv_bridge::CvImageConstPtr> & depthMsgs,
+		const std::vector<cv_bridge::CvImageConstPtr> & maskMsgs,
 		const std::vector<sensor_msgs::msg::CameraInfo> & cameraInfoMsgs,
 		const std::vector<sensor_msgs::msg::CameraInfo> & depthCameraInfoMsgs,
 		const std::string & frameId,
@@ -2038,6 +2039,7 @@ bool convertRGBDMsgs(
 		const rclcpp::Time & odomStamp,
 		cv::Mat & rgb,
 		cv::Mat & depth,
+		cv::Mat & mask,
 		std::vector<rtabmap::CameraModel> & cameraModels,
 		std::vector<rtabmap::StereoCameraModel> & stereoCameraModels,
 		tf2_ros::Buffer & listener,
@@ -2059,6 +2061,8 @@ bool convertRGBDMsgs(
 	int imageHeight = imageMsgs.size()?imageMsgs[0]->image.rows:cameraInfoMsgs[0].height;
 	int depthWidth = depthMsgs.size()?depthMsgs[0]->image.cols:0;
 	int depthHeight = depthMsgs.size()?depthMsgs[0]->image.rows:0;
+	int maskWidth = maskMsgs.size()?maskMsgs[0]->image.cols:cameraInfoMsgs[0].width;
+	int maskHeight = maskMsgs.size()?maskMsgs[0]->image.rows:cameraInfoMsgs[0].height;
 
 	bool isDepth = depthMsgs.empty() || (depthMsgs[0].get() != 0 && (
 			depthMsgs[0]->encoding.compare(sensor_msgs::image_encodings::TYPE_16UC1) == 0 ||
@@ -2224,6 +2228,40 @@ bool convertRGBDMsgs(
 			else
 			{
 				UERROR("Some RGB/left images are not the same type!");
+				return false;
+			}
+		}
+
+		if(!maskMsgs.empty())
+		{
+			cv_bridge::CvImageConstPtr ptrImage = maskMsgs[i];
+			if(maskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) == 0 ||
+			   maskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO8) == 0 ||
+			   maskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0)
+			{
+				// do nothing
+			}
+			else if(maskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO16) == 0)
+			{
+				ptrImage = cv_bridge::cvtColor(imageMsgs[i], "mono8");
+			}
+			else
+			{
+				ptrImage = cv_bridge::cvtColor(imageMsgs[i], "bgr8");
+			}
+
+			// initialize
+			if(mask.empty())
+			{
+				mask = cv::Mat(maskHeight, maskWidth*cameraCount, ptrImage->image.type());
+			}
+			if(ptrImage->image.type() == mask.type())
+			{
+				ptrImage->image.copyTo(cv::Mat(mask, cv::Rect(i*maskWidth, 0, maskWidth, maskHeight)));
+			}
+			else
+			{
+				UERROR("Some mask images are not the same type!");
 				return false;
 			}
 		}

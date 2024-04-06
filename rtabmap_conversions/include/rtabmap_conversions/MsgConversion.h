@@ -220,6 +220,7 @@ rtabmap::Transform getTransform(
 bool convertRGBDMsgs(
 		const std::vector<cv_bridge::CvImageConstPtr> & imageMsgs,
 		const std::vector<cv_bridge::CvImageConstPtr> & depthMsgs,
+		const std::vector<cv_bridge::CvImageConstPtr> & maskMsgs,
 		const std::vector<sensor_msgs::msg::CameraInfo> & cameraInfoMsgs,
 		const std::vector<sensor_msgs::msg::CameraInfo> & depthCameraInfoMsgs,
 		const std::string & frameId,
@@ -227,6 +228,7 @@ bool convertRGBDMsgs(
 		const rclcpp::Time & odomStamp,
 		cv::Mat & rgb,
 		cv::Mat & depth,
+		cv::Mat & mask,
 		std::vector<rtabmap::CameraModel> & cameraModels,
 		std::vector<rtabmap::StereoCameraModel> & stereoCameraModels,
 		tf2_ros::Buffer & tfBuffer,
