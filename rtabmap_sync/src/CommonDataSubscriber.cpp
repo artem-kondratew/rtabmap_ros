@@ -1056,7 +1056,6 @@ void CommonDataSubscriber::commonSingleCameraCallback(
 		const cv::Mat & localDescriptors,
 		const cv_bridge::CvImageConstPtr & maskMsg)
 {
-	RCLCPP_INFO(rclcpp::get_logger("rtabmap_sync"), "RGBDM sync: success");
 	std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> > localKeyPointsMsgs;
 	localKeyPointsMsgs.push_back(localKeyPoints);
 	std::vector<std::vector<rtabmap_msgs::msg::Point3f> > localPoints3dMsgs;
