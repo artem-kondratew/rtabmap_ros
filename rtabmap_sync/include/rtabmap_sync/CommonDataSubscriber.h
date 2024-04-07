@@ -95,7 +95,8 @@ protected:
 				const std::vector<rtabmap_msgs::msg::GlobalDescriptor> & globalDescriptorMsgs = std::vector<rtabmap_msgs::msg::GlobalDescriptor>(),
 				const std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> > & localKeyPoints = std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> >(),
 				const std::vector<std::vector<rtabmap_msgs::msg::Point3f> > & localPoints3d = std::vector<std::vector<rtabmap_msgs::msg::Point3f> >(),
-				const std::vector<cv::Mat> & localDescriptors = std::vector<cv::Mat>()) = 0;
+				const std::vector<cv::Mat> & localDescriptors = std::vector<cv::Mat>(),
+				const std::vector<cv_bridge::CvImageConstPtr> & maskMsgs = std::vector<cv_bridge::CvImageConstPtr>()) = 0;
 	virtual void commonLaserScanCallback(
 				const nav_msgs::msg::Odometry::ConstSharedPtr & odomMsg,
 				const rtabmap_msgs::msg::UserData::ConstSharedPtr & userDataMsg,
@@ -125,7 +126,8 @@ protected:
 				const std::vector<rtabmap_msgs::msg::GlobalDescriptor> & globalDescriptorMsgs = std::vector<rtabmap_msgs::msg::GlobalDescriptor>(),
 				const std::vector<rtabmap_msgs::msg::KeyPoint> & localKeyPoints = std::vector<rtabmap_msgs::msg::KeyPoint>(),
 				const std::vector<rtabmap_msgs::msg::Point3f> & localPoints3d = std::vector<rtabmap_msgs::msg::Point3f>(),
-				const cv::Mat & localDescriptors = cv::Mat());
+				const cv::Mat & localDescriptors = cv::Mat(),
+				const cv_bridge::CvImageConstPtr & maskMsg = cv_bridge::CvImageConstPtr());
 
 	void tick(const rclcpp::Time & stamp, double targetFrequency = 0);
 
@@ -280,6 +282,7 @@ private:
 	//for depth and rgb-only callbacks
 	image_transport::SubscriberFilter imageSub_;
 	image_transport::SubscriberFilter imageDepthSub_;
+	image_transport::SubscriberFilter imageMaskSub_;
 	message_filters::Subscriber<sensor_msgs::msg::CameraInfo> cameraInfoSub_;
 
 	//for rgbd callback
@@ -323,11 +326,11 @@ private:
 	DATA_SYNCS5(depthScanDescInfo, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, rtabmap_msgs::msg::ScanDescriptor, rtabmap_msgs::msg::OdomInfo)
 
 	// RGB + Depth + Odom
-	DATA_SYNCS4(depthOdom, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo)
+	DATA_SYNCS0(depthOdom, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, sensor_msgs::msg::Image)
 	DATA_SYNCS5(depthOdomScan2d, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, sensor_msgs::msg::LaserScan)
 	DATA_SYNCS5(depthOdomScan3d, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, sensor_msgs::msg::PointCloud2)
 	DATA_SYNCS5(depthOdomScanDesc, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, rtabmap_msgs::msg::ScanDescriptor)
-	DATA_SYNCS5(depthOdomInfo, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, rtabmap_msgs::msg::OdomInfo)
+	DATA_SYNCS1(depthOdomInfo, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, rtabmap_msgs::msg::OdomInfo, sensor_msgs::msg::Image)
 	DATA_SYNCS6(depthOdomScan2dInfo, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, sensor_msgs::msg::LaserScan, rtabmap_msgs::msg::OdomInfo)
 	DATA_SYNCS6(depthOdomScan3dInfo, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, sensor_msgs::msg::PointCloud2, rtabmap_msgs::msg::OdomInfo)
 	DATA_SYNCS6(depthOdomScanDescInfo, nav_msgs::msg::Odometry, sensor_msgs::msg::Image, sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo, rtabmap_msgs::msg::ScanDescriptor, rtabmap_msgs::msg::OdomInfo)

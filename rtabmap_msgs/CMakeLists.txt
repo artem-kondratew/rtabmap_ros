@@ -53,6 +53,7 @@ set(msg_files
    "msg/CameraModels.msg"
    "msg/CameraCallback.msg"
    "msg/MotionDetectorData.msg"
+   "msg/VisualizerData.msg"
 )
 
 # declare the service files to generate code for
