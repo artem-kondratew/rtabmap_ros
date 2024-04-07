@@ -75,6 +75,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap_msgs/srv/global_bundle_adjustment.hpp"
 #include "rtabmap_msgs/srv/cleanup_local_grids.hpp"
 #include "rtabmap_msgs/srv/add_link.hpp"
+#include "rtabmap_msgs/msg/key_point.hpp"
+#include "rtabmap_msgs/msg/point2f.hpp"
+#include "rtabmap_msgs/msg/visualizer_data.hpp"
 
 #include "rtabmap_util/MapsManager.h"
 
@@ -129,7 +132,8 @@ private:
 				const std::vector<rtabmap_msgs::msg::GlobalDescriptor> & globalDescriptorMsgs = std::vector<rtabmap_msgs::msg::GlobalDescriptor>(),
 				const std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> > & localKeyPoints = std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> >(),
 				const std::vector<std::vector<rtabmap_msgs::msg::Point3f> > & localPoints3d = std::vector<std::vector<rtabmap_msgs::msg::Point3f> >(),
-				const std::vector<cv::Mat> & localDescriptors = std::vector<cv::Mat>());
+				const std::vector<cv::Mat> & localDescriptors = std::vector<cv::Mat>(),
+				const std::vector<cv_bridge::CvImageConstPtr> & maskMsgs = std::vector<cv_bridge::CvImageConstPtr>());
 	void commonMultiCameraCallbackImpl(
 				const std::string & odomFrameId,
 				const rtabmap_msgs::msg::UserData::ConstSharedPtr & userDataMsg,
@@ -143,7 +147,8 @@ private:
 				const std::vector<rtabmap_msgs::msg::GlobalDescriptor> & globalDescriptorMsgs,
 				const std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> > & localKeyPoints,
 				const std::vector<std::vector<rtabmap_msgs::msg::Point3f> > & localPoints3d,
-				const std::vector<cv::Mat> & localDescriptors);
+				const std::vector<cv::Mat> & localDescriptors,
+				const std::vector<cv_bridge::CvImageConstPtr> & maskMsgs = std::vector<cv_bridge::CvImageConstPtr>());
 	virtual void commonLaserScanCallback(
 				const nav_msgs::msg::Odometry::ConstSharedPtr & odomMsg,
 				const rtabmap_msgs::msg::UserData::ConstSharedPtr & userDataMsg,
@@ -190,6 +195,10 @@ private:
 	void goalCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 	void goalNodeCallback(const rtabmap_msgs::msg::Goal::SharedPtr msg);
 	void updateGoal(const rclcpp::Time & stamp);
+
+	// methods for publishing the results of motion_detector work in rtabmap
+	void createRosImageMsg(cv::Mat image, sensor_msgs::msg::Image& msg, bool isMask);
+	std::vector<rtabmap_msgs::msg::KeyPoint> extractKeypoints(std::vector<cv::KeyPoint> keypoints);
 
 	void process(
 			const rclcpp::Time & stamp,
@@ -306,6 +315,9 @@ private:
 	std::mutex mapToOdomMutex_;
 
 	rtabmap_util::MapsManager mapsManager_;
+
+	// motion_detector
+	rclcpp::Publisher<rtabmap_msgs::msg::VisualizerData>::SharedPtr visDataPub_;
 
 	rclcpp::Publisher<rtabmap_msgs::msg::Info>::SharedPtr infoPub_;
 	rclcpp::Publisher<rtabmap_msgs::msg::MapData>::SharedPtr mapDataPub_;

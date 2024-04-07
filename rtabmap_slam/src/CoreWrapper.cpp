@@ -62,6 +62,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/LocalGridMaker.h>
 #include <rtabmap/core/Optimizer.h>
+#include "rtabmap/core/VisualizerMsg.h"
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
@@ -256,6 +257,7 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 		RCLCPP_INFO(get_logger(), "rtabmap: scan_cloud_is_2d = %s", scanCloudIs2d_?"true":"false");
 	}
 
+	visDataPub_ = this->create_publisher<rtabmap_msgs::msg::VisualizerData>("/rtabmap/to_visualizer", 1);
 	infoPub_ = this->create_publisher<rtabmap_msgs::msg::Info>("info", 1);
 	mapDataPub_ = this->create_publisher<rtabmap_msgs::msg::MapData>("mapData", 1);
 	mapGraphPub_ = this->create_publisher<rtabmap_msgs::msg::MapGraph>("mapGraph", rclcpp::QoS(1).reliable().durability(mapsManager_.isLatching()?RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL:RMW_QOS_POLICY_DURABILITY_VOLATILE));
@@ -1206,7 +1208,8 @@ void CoreWrapper::commonMultiCameraCallback(
 		const std::vector<rtabmap_msgs::msg::GlobalDescriptor> & globalDescriptorMsgs,
 		const std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> > & localKeyPoints,
 		const std::vector<std::vector<rtabmap_msgs::msg::Point3f> > & localPoints3d,
-		const std::vector<cv::Mat> & localDescriptors)
+		const std::vector<cv::Mat> & localDescriptors,
+		const std::vector<cv_bridge::CvImageConstPtr> & maskMsgs)
 {
 	std::string odomFrameId = odomFrameId_;
 	if(odomMsg.get())
@@ -1262,7 +1265,8 @@ void CoreWrapper::commonMultiCameraCallback(
 			globalDescriptorMsgs,
 			localKeyPoints,
 			localPoints3d,
-			localDescriptors);
+			localDescriptors,
+			maskMsgs);
 }
 
 void CoreWrapper::commonMultiCameraCallbackImpl(
@@ -1278,20 +1282,22 @@ void CoreWrapper::commonMultiCameraCallbackImpl(
 		const std::vector<rtabmap_msgs::msg::GlobalDescriptor> & globalDescriptorMsgs,
 		const std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> > & localKeyPointsMsgs,
 		const std::vector<std::vector<rtabmap_msgs::msg::Point3f> > & localPoints3dMsgs,
-		const std::vector<cv::Mat> & localDescriptorsMsgs)
+		const std::vector<cv::Mat> & localDescriptorsMsgs,
+		const std::vector<cv_bridge::CvImageConstPtr> & maskMsgs)
 {
 	UTimer timerConversion;
 	cv::Mat rgb;
 	cv::Mat depth;
+	cv::Mat mask;
 	std::vector<rtabmap::CameraModel> cameraModels;
 	std::vector<rtabmap::StereoCameraModel> stereoCameraModels;
 	std::vector<cv::KeyPoint> keypoints;
 	std::vector<cv::Point3f> points;
 	cv::Mat descriptors;
-
 	if(!rtabmap_conversions::convertRGBDMsgs(
 			imageMsgs,
 			depthMsgs,
+			maskMsgs,
 			cameraInfoMsgs,
 			depthCameraInfoMsgs,
 			frameId_,
@@ -1299,6 +1305,7 @@ void CoreWrapper::commonMultiCameraCallbackImpl(
 			lastPoseStamp_,
 			rgb,
 			depth,
+			mask,
 			cameraModels,
 			stereoCameraModels,
 			*tfBuffer_,
@@ -1530,12 +1537,12 @@ void CoreWrapper::commonMultiCameraCallbackImpl(
 				scan,
 				rgb,
 				depth,
+				mask,
 				cameraModels,
 				lastPoseIntermediate_?-1:0,
 				rtabmap_conversions::timestampFromROS(lastPoseStamp_),
 				userData);
 	}
-
 	OdometryInfo odomInfo;
 	if(odomInfoMsg.get())
 	{
@@ -1802,6 +1809,41 @@ void CoreWrapper::commonSensorDataCallback(
 			timerConversion.ticks());
 
 	covariance_ = cv::Mat();
+}
+
+void CoreWrapper::createRosImageMsg(cv::Mat image, sensor_msgs::msg::Image& msg, bool) {
+	if (image.empty()) {
+		return;
+	}
+
+    msg.header.frame_id = "camera_link_optical";
+    msg.header.stamp = this->get_clock()->now();
+
+    msg.height = image.rows;
+    msg.width = image.cols;
+
+    msg.encoding = sensor_msgs::image_encodings::MONO8;
+    msg.is_bigendian = 0;
+    msg.step = msg.width * image.channels();
+
+    msg.data.resize(msg.height * msg.width * image.channels());
+    std::memcpy(msg.data.data(), image.data, sizeof(uint8_t) * msg.height * msg.width * image.channels());
+}
+
+std::vector<rtabmap_msgs::msg::KeyPoint> CoreWrapper::extractKeypoints(std::vector<cv::KeyPoint> keypoints) {
+	std::vector<rtabmap_msgs::msg::KeyPoint> keypoints_ros;
+	for (size_t i = 0; i < keypoints.size(); i++) {
+		auto kp = rtabmap_msgs::msg::KeyPoint();
+		kp.pt.x = keypoints[i].pt.x;
+		kp.pt.y = keypoints[i].pt.y;
+		kp.size = keypoints[i].size;
+		kp.angle = keypoints[i].angle;
+		kp.response = keypoints[i].response;
+		kp.octave = keypoints[i].octave;
+		kp.class_id = keypoints[i].class_id;
+		keypoints_ros.push_back(kp);
+	}
+	return keypoints_ros;
 }
 
 void CoreWrapper::process(
@@ -2082,8 +2124,17 @@ void CoreWrapper::process(
 		}
 
 		timeMsgConversion += timer.ticks();
-		if(rtabmap_.process(data, odom, covariance, odomVelocity, externalStats))
+		VisualizerMsg vis_msg;
+		if(rtabmap_.process(data, odom, covariance, odomVelocity, externalStats, &vis_msg))
 		{
+			auto ros_vis_msg = rtabmap_msgs::msg::VisualizerData();
+			createRosImageMsg(vis_msg.image(), ros_vis_msg.image, false);
+			createRosImageMsg(vis_msg.depth(), ros_vis_msg.depth, false);
+			createRosImageMsg(vis_msg.mask(), ros_vis_msg.mask, true);
+			ros_vis_msg.static_keypoints = extractKeypoints(vis_msg.staticKeypoints());
+			ros_vis_msg.dynamic_keypoints = extractKeypoints(vis_msg.dynamicKeypoints());
+			visDataPub_->publish(ros_vis_msg);
+
 			timeRtabmap = timer.ticks();
 			mapToOdomMutex_.lock();
 			mapToOdom_ = rtabmap_.getMapCorrection();
