@@ -88,7 +88,8 @@ private:
 			const std::vector<rtabmap_msgs::msg::GlobalDescriptor> & globalDescriptorMsgs = std::vector<rtabmap_msgs::msg::GlobalDescriptor>(),
 			const std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> > & localKeyPoints = std::vector<std::vector<rtabmap_msgs::msg::KeyPoint> >(),
 			const std::vector<std::vector<rtabmap_msgs::msg::Point3f> > & localPoints3d = std::vector<std::vector<rtabmap_msgs::msg::Point3f> >(),
-			const std::vector<cv::Mat> & localDescriptors = std::vector<cv::Mat>());
+			const std::vector<cv::Mat> & localDescriptors = std::vector<cv::Mat>(),
+			const std::vector<cv_bridge::CvImageConstPtr> & maskMsgs = std::vector<cv_bridge::CvImageConstPtr>());
 	virtual void commonStereoCallback(
 			const nav_msgs::msg::Odometry::ConstSharedPtr & odomMsg,
 			const rtabmap_msgs::msg::UserData::ConstSharedPtr & userDataMsg,
