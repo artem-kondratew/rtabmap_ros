@@ -1,7 +1,7 @@
 data_synchronizer:
     ros__parameters:
-        camera_info_input: /camera/camera_info      # input topic with camera_info
-        rgb_input: /camera/image_raw                # input topic with rgb image
-        depth_input: /camera/depth/image_raw        # input topic with depth image
-        odom_input: /odom                    # input topic with odom
-        output: /rtabmap/to_motion_detector  # output topic for communication with motion_detector node
+        camera_info_input: /camera/camera_info # input topic with camera_info
+        rgb_input: /camera/image_raw           # input topic with rgb image
+        depth_input: /camera/depth/image_raw   # input topic with depth image
+        odom_input: /odom                      # input topic with odom
+        output: /rtabmap/to_motion_detector    # output topic for communication with motion_detector node
