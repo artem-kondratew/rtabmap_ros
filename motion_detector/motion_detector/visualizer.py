@@ -16,6 +16,7 @@ class Visualizer(Node):
     
     def __init__(self):
         super().__init__('rtabmap_visualizer')
+        self.get_logger().info('node started')
         self.subscription_ = self.create_subscription(VisualizerData, '/rtabmap/to_visualizer', self.callback, 10)
         self.subscription_  # prevent unused variable warning
         self.publisher_ = self.create_publisher(Image, '/rtabmap/visualizer', 10)
