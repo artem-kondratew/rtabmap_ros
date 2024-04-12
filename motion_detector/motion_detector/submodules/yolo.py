@@ -12,7 +12,8 @@ from ultralytics import YOLO as _YOLO
 class Yolo():
 
     def __init__(self, classes=None):
-        if torch.cuda.is_available():
+        self.gpu = torch.cuda.is_available()
+        if self.gpu:
             path = os.path.join(get_package_share_directory('motion_detector'), 'config', 'yolov8n-seg.engine')
         else:
             path = os.path.join(get_package_share_directory('motion_detector'), 'config', 'yolov8n-seg.pt')
