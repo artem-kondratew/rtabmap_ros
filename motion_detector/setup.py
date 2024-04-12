@@ -25,6 +25,7 @@ setup(
             'fake_detector = motion_detector.fake_detector:main',
             'decoder = motion_detector.decoder:main',
             'visualizer = motion_detector.visualizer:main',
+            'single_image = motion_detector.single_image:main',
         ],
     },
 )
