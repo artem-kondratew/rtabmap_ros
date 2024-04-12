@@ -38,6 +38,7 @@ class MotionDetector(Node):
     def callback(self, msg):
         cv_frame = self.bridge_.imgmsg_to_cv2(msg.rgb, desired_encoding='passthrough')
         depth = self.bridge_.imgmsg_to_cv2(msg.depth, desired_encoding='passthrough')
+        depth_masked = depth.copy()
 
         output = self.model_.run(cv_frame)
         success, mask = self.model_.merge_masks(output.masks)
@@ -46,11 +47,11 @@ class MotionDetector(Node):
             mask = np.zeros((h, w, 1), dtype='uint8')
             self.get_logger().info('no_masks')
         else:
-            mask = mask[(w-h)//2:h+(w-h)//2, :]
+            if self.model_.gpu:
+                mask = mask[(w-h)//2:h+(w-h)//2, :]
             mask = cv.normalize(mask, None, 255, 0, cv.NORM_MINMAX, cv.CV_8U)
-        mask = cv.dilate(mask, self.kernel_, iterations = 2)
-        depth_masked = depth.copy()
-        depth_masked[mask == 255] = 0
+            mask = cv.dilate(mask, self.kernel_, iterations = 2)
+            depth_masked[mask == 255] = 0
 
         msg.mask = self.bridge_.cv2_to_imgmsg(mask, encoding='passthrough')
         msg.depth = self.bridge_.cv2_to_imgmsg(depth_masked, encoding='passthrough')
