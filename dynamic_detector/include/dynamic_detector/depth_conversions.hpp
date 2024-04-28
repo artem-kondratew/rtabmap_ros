@@ -36,38 +36,41 @@
 #ifndef DEPTHIMAGE_TO_POINTCLOUD2__DEPTH_CONVERSIONS_HPP_
 #define DEPTHIMAGE_TO_POINTCLOUD2__DEPTH_CONVERSIONS_HPP_
 
-#include "depth_traits.hpp"
 
+#include <limits>
+
+#include <opencv2/imgproc/imgproc.hpp>
+
+#include <cv_bridge/cv_bridge.h>
+#include <geometry_msgs/msg/point.hpp>
 #include <image_geometry/pinhole_camera_model.h>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
-#include <limits>
+#include "depth_traits.hpp"
 
-#include <cv_bridge/cv_bridge.h>
-#include <opencv2/imgproc/imgproc.hpp>
 
-namespace depthimage_to_pointcloud2
-{
+namespace depthimage_to_pointcloud2 {
 
 // Handles float or uint16 depths
 template<typename T>
-std::vector<cv::Point3f> convert(
+std::vector<geometry_msgs::msg::Point> convert(
   const sensor_msgs::msg::Image& depth_msg,
   sensor_msgs::msg::PointCloud2::SharedPtr & cloud_msg,
   const image_geometry::PinholeCameraModel & model,
-  double range_max = 0.0,
-  bool use_quiet_nan = false)
+  double range_max,
+  double* unit_scaling)
 {
-  std::vector<cv::Point3f> xyz;
+  std::vector<geometry_msgs::msg::Point> xyz;
+  bool use_quiet_nan = false;
   // Use correct principal point from calibration
   float center_x = model.cx();
   float center_y = model.cy();
 
   // Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y)
-  double unit_scaling = DepthTraits<T>::toMeters(T(1) );
-  float constant_x = unit_scaling / model.fx();
-  float constant_y = unit_scaling / model.fy();
+  *unit_scaling = DepthTraits<T>::toMeters(T(1) );
+  float constant_x = *unit_scaling / model.fx();
+  float constant_y = *unit_scaling / model.fy();
   float bad_point = std::numeric_limits<float>::quiet_NaN();
 
   sensor_msgs::PointCloud2Iterator<float> iter_x(*cloud_msg, "x");
@@ -105,11 +108,13 @@ std::vector<cv::Point3f> convert(
       *iter_y = (v - center_y) * depth * constant_y;
       *iter_z = DepthTraits<T>::toMeters(depth);
 
-      cv::Point3f pt{*iter_x, *iter_y, *iter_z};
+      geometry_msgs::msg::Point pt;
+      pt.x = *iter_x;
+      pt.y = *iter_y;
+      pt.z = *iter_z;
       xyz.push_back(pt);
     }
   }
-
   return xyz;
 }
 

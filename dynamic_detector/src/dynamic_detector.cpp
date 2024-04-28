@@ -8,12 +8,10 @@
 #include <cv_bridge/cv_bridge.h>
 #include <geometry_msgs/msg/point.hpp>
 #include <image_geometry/pinhole_camera_model.h>
-#include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <std_msgs/msg/u_int64.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 
 #include "rtabmap_msgs/msg/motion_detector_data.hpp"
@@ -29,19 +27,21 @@ private:
 
     image_geometry::PinholeCameraModel camera_model_;
     float range_max_;
+    double unit_scaling_;
 
 public:
     DynamicDetector();
 
 private:
     std::vector<cv::Point> findCenters(std::vector<uint64_t> boxes);
-    std::vector<cv::Point3f> depth2XYZ(const sensor_msgs::msg::Image& depth, sensor_msgs::msg::PointCloud2::SharedPtr point_cloud);
+    std::vector<geometry_msgs::msg::Point> depth2XYZ(const sensor_msgs::msg::Image& depth, sensor_msgs::msg::PointCloud2::SharedPtr point_cloud, double* unit_scaling);
     std::vector<std::vector<cv::Point>> setImagePoints(std::vector<uint64_t> boxes);
-    std::vector<std::vector<cv::Point3f>> getRealPoints(size_t w, std::vector<std::vector<cv::Point>> image_points,
-                                                                                    std::vector<cv::Point3f> xyz, std::vector<cv::Point> centers);
-    std::vector<std::vector<cv::Point3f>> setRealBox(std::vector<std::vector<cv::Point3f>> real_points);
+    std::vector<std::vector<geometry_msgs::msg::Point>> getRealPoints(size_t w, std::vector<std::vector<cv::Point>> image_points,
+                                                                                    std::vector<geometry_msgs::msg::Point> xyz, std::vector<cv::Point> centers);
+    std::vector<std::vector<geometry_msgs::msg::Point>> setRealBox(std::vector<std::vector<geometry_msgs::msg::Point>> real_points);
+    double calcUpperY(geometry_msgs::msg::Point lower_point, cv::Point image_lower_point);
     void createLine(visualization_msgs::msg::Marker& line_list, geometry_msgs::msg::Point pt0, geometry_msgs::msg::Point pt1);
-    visualization_msgs::msg::Marker createBoxMsg(std::vector<std::vector<cv::Point3f>> real_points);
+    visualization_msgs::msg::Marker createBoxMsg(std::vector<std::vector<geometry_msgs::msg::Point>> real_points, std::vector<std::vector<cv::Point>> image_points);
 
     void drawBoxes(cv::Mat image, std::vector<uint64_t> boxes, std::vector<cv::Point> centers, std::vector<std::vector<cv::Point>> image_points);
 
@@ -78,7 +78,7 @@ std::vector<cv::Point> DynamicDetector::findCenters(std::vector<uint64_t> boxes)
 }
 
 
-std::vector<cv::Point3f> DynamicDetector::depth2XYZ(const sensor_msgs::msg::Image& depth, sensor_msgs::msg::PointCloud2::SharedPtr point_cloud) {
+std::vector<geometry_msgs::msg::Point> DynamicDetector::depth2XYZ(const sensor_msgs::msg::Image& depth, sensor_msgs::msg::PointCloud2::SharedPtr point_cloud, double* unit_scaling) {
     point_cloud->header.frame_id = "camera_link_optical";
     point_cloud->header.stamp = this->get_clock()->now();
     point_cloud->height = depth.height;
@@ -91,7 +91,7 @@ std::vector<cv::Point3f> DynamicDetector::depth2XYZ(const sensor_msgs::msg::Imag
     sensor_msgs::PointCloud2Modifier pcd_modifier(*point_cloud);
     pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
 
-    std::vector<cv::Point3f> xyz = depthimage_to_pointcloud2::convert<float>(depth, point_cloud, camera_model_, range_max_, false);
+    std::vector<geometry_msgs::msg::Point> xyz = depthimage_to_pointcloud2::convert<float>(depth, point_cloud, camera_model_, range_max_, unit_scaling);
 
     return xyz;
 }
@@ -115,18 +115,15 @@ std::vector<std::vector<cv::Point>> DynamicDetector::setImagePoints(std::vector<
 }
 
 
-std::vector<std::vector<cv::Point3f>> DynamicDetector::getRealPoints(
-    size_t w,
-    std::vector<std::vector<cv::Point>> image_points,
-    std::vector<cv::Point3f> xyz,
-    std::vector<cv::Point> centers) {
-    std::vector<std::vector<cv::Point3f>> real_points;
+std::vector<std::vector<geometry_msgs::msg::Point>> DynamicDetector::getRealPoints(size_t w, std::vector<std::vector<cv::Point>> image_points,
+                                                                                        std::vector<geometry_msgs::msg::Point> xyz, std::vector<cv::Point> centers) {
+    std::vector<std::vector<geometry_msgs::msg::Point>> real_points;
     for (size_t i = 0; i < image_points.size(); i++) {
         std::vector<cv::Point> image_pts = image_points[i];
-        std::vector<cv::Point3f> real_pts;
-        cv::Point3f real_center = xyz[centers[i].y*w+centers[i].x];
+        std::vector<geometry_msgs::msg::Point> real_pts;
+        geometry_msgs::msg::Point real_center = xyz[centers[i].y*w+centers[i].x];
         for (size_t j = 0; j < image_pts.size(); j++) {
-            cv::Point3f real_pt = xyz[image_pts[j].y*w+image_pts[j].x];
+            geometry_msgs::msg::Point real_pt = xyz[image_pts[j].y*w+image_pts[j].x];
             real_pt.z = real_center.z;
             real_pts.push_back(real_pt);
         }
@@ -136,22 +133,26 @@ std::vector<std::vector<cv::Point3f>> DynamicDetector::getRealPoints(
 }
 
 
-std::vector<std::vector<cv::Point3f>> DynamicDetector::setRealBox(std::vector<std::vector<cv::Point3f>> real_points) {
-    std::vector<std::vector<cv::Point3f>> all_points;
+std::vector<std::vector<geometry_msgs::msg::Point>> DynamicDetector::setRealBox(std::vector<std::vector<geometry_msgs::msg::Point>> real_points) {
+    std::vector<std::vector<geometry_msgs::msg::Point>> all_points;
     for (size_t i = 0; i < real_points.size(); i++) {
-        std::vector<cv::Point3f> real_pts = real_points[i];
+        std::vector<geometry_msgs::msg::Point> real_pts = real_points[i];
         float l = real_pts[3].x - real_pts[2].x;
-        std::vector<cv::Point3f> all_pts = real_pts;
+        std::vector<geometry_msgs::msg::Point> all_pts = real_pts;
         for (size_t j = 0; j < real_pts.size(); j++) {
-            cv::Point3f pt = real_pts[j];
+            all_pts[j].z -= 0.5 * l;
+            geometry_msgs::msg::Point pt = real_pts[j];
             pt.z += l;
             all_pts.push_back(pt);
         }
         all_points.push_back(all_pts);
-        std::cout << all_pts.size() << std::endl;
     }
-    std::cout << all_points.size() << std::endl;
     return all_points;
+}
+
+
+double DynamicDetector::calcUpperY(geometry_msgs::msg::Point lower_point, cv::Point image_upper_point) {
+   return (image_upper_point.y - camera_model_.cy()) * lower_point.z * unit_scaling_ / camera_model_.fy();
 }
 
 
@@ -161,7 +162,8 @@ void DynamicDetector::createLine(visualization_msgs::msg::Marker& line_list, geo
 }
 
 
-visualization_msgs::msg::Marker DynamicDetector::createBoxMsg(std::vector<std::vector<cv::Point3f>> real_points) {
+visualization_msgs::msg::Marker DynamicDetector::createBoxMsg(std::vector<std::vector<geometry_msgs::msg::Point>> real_points,
+                                                                                                            std::vector<std::vector<cv::Point>> image_points) {
     visualization_msgs::msg::Marker line_list;
     line_list.header.frame_id = "camera_link_optical";
     line_list.header.stamp = this->get_clock()->now();
@@ -172,24 +174,22 @@ visualization_msgs::msg::Marker DynamicDetector::createBoxMsg(std::vector<std::v
     line_list.color.a = 1.0; // alpha
 
     for (size_t i = 0; i < real_points.size(); i++) {
-        std::vector<cv::Point3f> real_pts = real_points[i];
-        std::vector<geometry_msgs::msg::Point> geometry_pts;
-        for (size_t j = 0; j < real_pts.size(); j++) {
-            auto pt = geometry_msgs::msg::Point();
-            pt.x = real_pts[j].x;
-            pt.y = real_pts[j].y;
-            pt.z = real_pts[j].z;
-            geometry_pts.push_back(pt);
-        }
+        std::vector<geometry_msgs::msg::Point> real_pts = real_points[i];
+        std::vector<cv::Point> image_pts = image_points[i];
 
-        geometry_msgs::msg::Point ulf = geometry_pts[0];
-        geometry_msgs::msg::Point urf = geometry_pts[1];
-        geometry_msgs::msg::Point llf = geometry_pts[2];
-        geometry_msgs::msg::Point lrf = geometry_pts[3];
-        geometry_msgs::msg::Point ulb = geometry_pts[4];
-        geometry_msgs::msg::Point urb = geometry_pts[5];
-        geometry_msgs::msg::Point llb = geometry_pts[6];
-        geometry_msgs::msg::Point lrb = geometry_pts[7];
+        geometry_msgs::msg::Point ulf = real_pts[0];
+        geometry_msgs::msg::Point urf = real_pts[1];
+        geometry_msgs::msg::Point llf = real_pts[2];
+        geometry_msgs::msg::Point lrf = real_pts[3];
+        geometry_msgs::msg::Point ulb = real_pts[4];
+        geometry_msgs::msg::Point urb = real_pts[5];
+        geometry_msgs::msg::Point llb = real_pts[6];
+        geometry_msgs::msg::Point lrb = real_pts[7];
+
+        ulb.x = llb.x; ulb.z = llb.z; ulb.y = calcUpperY(llb, image_pts[0]);
+        urb.x = lrb.x; urb.z = lrb.z; urb.y = calcUpperY(lrb, image_pts[1]);
+        ulf.x = llf.x; ulf.z = llf.z; ulf.y = ulb.y;
+        urf.x = lrf.x; urf.z = lrf.z; urf.y = urb.y;
 
         createLine(line_list, ulf, urf);
         createLine(line_list, ulf, llf);
@@ -247,23 +247,23 @@ void DynamicDetector::callback(const rtabmap_msgs::msg::MotionDetectorData::Cons
     camera_model_.fromCameraInfo(msg->camera_info);
 
     sensor_msgs::msg::PointCloud2::SharedPtr point_cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    std::vector<cv::Point3f> xyz = depth2XYZ(msg->depth, point_cloud);
+    std::vector<geometry_msgs::msg::Point> xyz = depth2XYZ(msg->depth, point_cloud, &unit_scaling_);
 
     std::vector<std::vector<cv::Point>> image_points = setImagePoints(boxes);
 
     std::vector<cv::Point> centers = findCenters(boxes);
-    std::vector<std::vector<cv::Point3f>> front_real_points = getRealPoints(w, image_points, xyz, centers);
-    std::vector<std::vector<cv::Point3f>> real_points = setRealBox(front_real_points);
+    std::vector<std::vector<geometry_msgs::msg::Point>> front_real_points = getRealPoints(w, image_points, xyz, centers);
+    std::vector<std::vector<geometry_msgs::msg::Point>> real_points = setRealBox(front_real_points);
 
-    visualization_msgs::msg::Marker line_list = createBoxMsg(real_points);
+    visualization_msgs::msg::Marker line_list = createBoxMsg(real_points, image_points);
 
     pc2_pub_->publish(*point_cloud);
     box_pub_->publish(line_list);
 
     drawBoxes(rgb, boxes, centers, image_points);
     cv::normalize(depth, depth, 1, 0, cv::NORM_MINMAX);
-    cv::imshow("depth", depth);
-    cv::imshow("mask", mask);
+    // cv::imshow("depth", depth);
+    // cv::imshow("mask", mask);
     cv::imshow("image", rgb);
     cv::waitKey(20);
 }

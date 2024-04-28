@@ -42,10 +42,7 @@ class MotionDetector(Node):
         x = []
         for box in boxes:
             for v in box.xyxy.tolist()[0]:
-                uint64 = UInt64()
-                uint64.data = int(v)
-                x.append(uint64)
-        print(x)
+                x.append(int(v))
         return x
 
     def callback(self, msg):

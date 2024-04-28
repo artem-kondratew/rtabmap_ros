@@ -9,7 +9,6 @@ find_package(ament_cmake REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(image_geometry REQUIRED)
-find_package(nav_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rtabmap_msgs REQUIRED)
@@ -29,7 +28,6 @@ ament_target_dependencies(dynamic_detector
     cv_bridge
     geometry_msgs
     image_geometry
-    nav_msgs
     rclcpp
     rtabmap_msgs
     sensor_msgs
