@@ -10,7 +10,6 @@ from cv_bridge import CvBridge
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import CameraInfo, Image
-from std_msgs.msg import UInt64
 from rtabmap_msgs.msg import MotionDetectorData
 
 from .submodules.yolo import Yolo
