@@ -1,4 +1,0 @@
-dynamic_detector:
-    ros__parameters:
-        input_topic: /rtabmap/dynamic_detector/input # topic with depth, mask and odom
-        range_max: 20.0                              # depth camera max range
