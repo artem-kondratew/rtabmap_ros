@@ -17,7 +17,6 @@ find_package(rosidl_default_generators REQUIRED)
 
 find_package(builtin_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -51,8 +50,6 @@ set(msg_files
    "msg/EnvSensor.msg"
    "msg/CameraModel.msg"
    "msg/CameraModels.msg"
-   "msg/CameraCallback.msg"
-   "msg/MotionDetectorData.msg"
    "msg/VisualizerData.msg"
 )
 
@@ -80,7 +77,7 @@ set(srv_files
 rosidl_generate_interfaces(${PROJECT_NAME}
    ${msg_files}
    ${srv_files}
-   DEPENDENCIES builtin_interfaces geometry_msgs nav_msgs std_msgs sensor_msgs std_srvs
+   DEPENDENCIES builtin_interfaces geometry_msgs std_msgs sensor_msgs std_srvs
 )
 
 ament_export_dependencies(rosidl_default_runtime)

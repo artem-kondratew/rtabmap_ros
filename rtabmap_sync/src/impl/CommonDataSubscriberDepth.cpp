@@ -501,12 +501,12 @@ void CommonDataSubscriber::setupDepthCallbacks(
 		int queueSize,
 		bool approxSync)
 {
-	RCLCPP_INFO(node.get_logger(), "Setup depth callback && motion_detector");
+	RCLCPP_INFO(node.get_logger(), "Setup depth callback && data from yolo");
 
 	image_transport::TransportHints hints(&node);
 	imageSub_.subscribe(&node, "rgb/image", hints.getTransport(), rclcpp::QoS(1).reliability(qosImage_).get_rmw_qos_profile());
 	imageDepthSub_.subscribe(&node, "depth/image", hints.getTransport(), rclcpp::QoS(1).reliability(qosImage_).get_rmw_qos_profile());
-	imageMaskSub_.subscribe(&node, "/rtabmap/motion_detector/mask", hints.getTransport(), rclcpp::QoS(1).reliability(qosImage_).get_rmw_qos_profile());
+	imageMaskSub_.subscribe(&node, "/rtabmap/yolo/mask", hints.getTransport(), rclcpp::QoS(1).reliability(qosImage_).get_rmw_qos_profile());
 	cameraInfoSub_.subscribe(&node, "rgb/camera_info", rclcpp::QoS(1).reliability(qosCameraInfo_).get_rmw_qos_profile());
 	
 #ifdef RTABMAP_SYNC_USER_DATA
