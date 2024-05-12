@@ -25,9 +25,10 @@ from launch_ros.actions import SetParameter
 def generate_launch_description():
 
     parameters=[{
+          'approx_sync':False,
           'frame_id':'kinect',
           'subscribe_depth':True,
-          'subscribe_odom_info':True,
+          'subscribe_odom_info':False,
           # RTAB-Map's parameters should all be string type:
           'Odom/Strategy':'0',
           'Odom/ResetCountdown':'15',
@@ -39,14 +40,13 @@ def generate_launch_description():
           'RGBD/AngularUpdate':'0'}]
           
     remappings=[
-          ('rgb/image', '/camera/rgb/image_color'),
-          ('rgb/camera_info', '/camera/rgb/camera_info'),
-          ('depth/image', '/camera/depth/image')]
-          
+          ('rgb/image', '/rtabmap/yolo/rgb'),
+          ('rgb/camera_info', '/rtabmap/yolo/camera_info'),
+          ('depth/image', '/rtabmap/yolo/depth')]
 
     return LaunchDescription([
 
-        SetParameter(name='use_sim_time', value=True),
+        SetParameter(name='use_sim_time', value=False),
         # 'use_sim_time' will be set on all nodes following the line above
 
         # Nodes to launch
